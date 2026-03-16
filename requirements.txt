@@ -1,0 +1,6 @@
+numpy
+matplotlib
+pandas
+jupyter
+gurobipy
+scikit-learn #sicuro?
