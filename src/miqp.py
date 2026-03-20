@@ -3,7 +3,7 @@ In this module, we implement the Mixed-Integer Quadratic Programming (MIQP)
 formulation of the sparse linear regression problem.
 
 The cardinality sparsity constraint is modeled using binary variables and
-Big-M constraints, and the resulting problem is solved using Gurobi.
+M constraints, and the resulting problem is solved using Gurobi.
 
 This module provides an exact baseline solution for comparison
 with the IHT algorithm.
@@ -17,16 +17,6 @@ import numpy as np
 class MIQPSolver:
 
     def __init__(self, problem, k, M=None):
-        """
-        Parameters
-        ----------
-        problem : LeastSquaresProblem
-            Instance containing X and y
-        k : int
-            Maximum number of nonzero coefficients
-        M : float
-            Big-M constant
-        """
 
         self.problem = problem
         self.k = k
@@ -35,8 +25,9 @@ class MIQPSolver:
         self.y = problem.y
         self.p = problem.p
 
+
         if M is None:
-            self.M = self._choose_M()
+            self.M = self._choose_M() #choose_M è un metodo che calcola un valore sui coefficienti della soluzione OLS
         else:
             self.M = M
 
@@ -48,7 +39,6 @@ class MIQPSolver:
     #idea per trovare M ottimale in modo da non tagliare certi valori di beta, andando a tagliare potenziali soluzioni ottimali
     #NOTA: funziona solo se X'X è invertibile e se n>p e se X ha rango pieno
     def _choose_M(self):
-        # Ordinary Least Squares solution
         XtX = self.X.T @ self.X
         Xty = self.X.T @ self.y
 
@@ -56,43 +46,45 @@ class MIQPSolver:
 
         # Safety factor
         M = 2.0 * np.max(np.abs(beta_ls)) #prendo il massimo valore assoluto tra i coefficienti di beta_ls e lo moltiplico per 2
-
-        # Degenerate safeguard
-        if M == 0:
+        if M == 0: #safeguard
             M = 1.0
 
         return M
+    
 
 
+
+    # costruisce il modello MIQP
     def build_model(self):
 
-        # Create Gurobi model
+
+        # gurobipy.Model è la classe che rappresenta un modello di ottimizzazione
         self.model = gp.Model("SparseRegressionMIQP")
+        self.model.setParam('OutputFlag', 0)
 
-        # Create continuous variables beta_i
         self.beta = self.model.addVars(self.p, lb=-GRB.INFINITY, name="beta")
+        self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z") #binary variables z_i
 
-        # Create binary variables z_i
-        self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z")
 
-        # Set objective: minimize ||y - X beta||^2
+        #objective: minimize ||y - X beta||^2
         obj = 0
         n = self.X.shape[0]
-
         for i in range(n): #per ogni riga i di X faccio X*beta e lo confronto con y[i]
             expr = 0
             for j in range(self.p):
                 expr += self.X[i, j] * self.beta[j]
             obj += (self.y[i] - expr) * (self.y[i] - expr)
 
-        self.model.setObjective(obj, GRB.MINIMIZE)
+        self.model.setObjective(obj, GRB.MINIMIZE) #GRB.MINIMIZE indica che vogliamo minimizzare l'obiettivo
 
-        # Add sparsity constraints: Big-M constraints to link beta and z
+
+        #sparsity constraints M to link beta and z
         for j in range(self.p):
             self.model.addConstr(self.beta[j] <= self.M * self.z[j], name=f"upper_{j}") #se z[j] = 0 allora beta[j] <- 0, se z[j] = 1 allora beta[j] <- (M)
             self.model.addConstr(self.beta[j] >= -self.M * self.z[j], name=f"lower_{j}") #se z[j] = 0 allora beta[j] <- 0, se z[j] = 1 allora beta[j] <- (-M)
 
-        # Add cardinality constraint: sum of z_i <= k
+
+        #cardinality constraint: sum of z_i <= k
         self.model.addConstr(
             gp.quicksum(self.z[j] for j in range(self.p)) <= self.k,
             name="cardinality"
@@ -102,19 +94,21 @@ class MIQPSolver:
     def solve(self):
         if self.model is None:
             self.build_model()
-
         self.model.optimize()
 
+        #check if an optimal solution was found
         if self.model.status != GRB.OPTIMAL:
             print("Warning: optimal solution not found.")
 
 
+    # confronta soluzioni (UB) e limiti inferiori (LB)_ gurobi ottiene un LB con z in [0,1] e un UB con z in {0,1}. poi divide
+    # in sottoproblemi per cercare qualcosa di meglio e aggiorna LB e UB fino a trovare la soluzione ottimale cioè quando LB=UB, lo stato ottimale. 
     def get_solution(self):
-        if self.model.status != GRB.OPTIMAL:
+        if self.model.status != GRB.OPTIMAL: #status: attributo di gurobi, risultato logico basato su UB e LB; GRB.OPTIMAL indica la soluzione ottimale
             return None
 
-        beta_sol = np.zeros(self.p)
+        beta_sol = np.zeros(self.p) 
         for j in range(self.p):
-            beta_sol[j] = self.beta[j].X
+            beta_sol[j] = self.beta[j].X #.X è l'attributo di Gurobi che contiene il valore ottimale della variabile beta[j]
 
         return beta_sol

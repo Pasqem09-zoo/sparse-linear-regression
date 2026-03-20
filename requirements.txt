@@ -4,3 +4,4 @@ pandas
 jupyter
 gurobipy
 scikit-learn #sicuro?
+wandb

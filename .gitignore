@@ -209,3 +209,18 @@ __marimo__/
 
 #venv
 OPTvenv/
+
+
+# WandB experiment logs
+wandb/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+
+# MacOS
+.DS_Store

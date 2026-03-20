@@ -21,7 +21,7 @@ def hard_thresholding(beta, k):
 
     beta_new = beta.copy()
 
-    # If k is larger than the number of features, keep all coefficients
+    #if k is larger than the number of features, keep all coefficients
     if k == 0:
         return np.zeros_like(beta_new)
 
@@ -30,8 +30,6 @@ def hard_thresholding(beta, k):
 
     #### azzeri le n-k varaibili più piccole di beta in valore assoluto
     indices = np.argsort(np.abs(beta_new)) # argosrt da gli indici ordinati dal valore assoluto più piccolo al più grande
-
-    # Set smallest ones to zero
     indices_zero = indices[0:-k]
     beta_new[indices_zero] = 0
 
@@ -48,10 +46,9 @@ def iht(problem, k, max_iter=1000, epsilon=1e-6):
     epsilon : (float) Tolerance for stopping criterion
     """
 
-    # Initialize beta at zero
+    #initialize beta at zero
     beta = np.zeros(problem.p) #Crea un vettore beta con lunghezza uguale al numero di feature
 
-    # Compute Lipschitz constant
     L = problem.lipschitz_constant()
     if L <= 0:
         raise ValueError("Lipschitz constant must be positive")
@@ -60,19 +57,16 @@ def iht(problem, k, max_iter=1000, epsilon=1e-6):
 
     for i in range(max_iter):
 
-        # Save current loss
-        loss_history.append(problem.loss(beta))
+        loss_history.append(problem.loss(beta)) #per tenere traccia della loss ad ogni iterazione
 
-        # Compute gradient
+        #step gradiente
         grad = problem.gradient(beta)
-
-        # Gradient step
         beta_t = beta - (1.0 / L) * grad
 
-        # Hard thresholding: projection onto C_k
+        #hard thresholding: projection onto C_k
         beta_new = hard_thresholding(beta_t, k)
 
-        # Check convergence
+        #stopping criterion: if the change in beta is small, we can stop
         if np.linalg.norm(beta_new - beta) < epsilon:
             break
 
