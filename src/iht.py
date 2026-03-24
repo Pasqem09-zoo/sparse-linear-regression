@@ -11,6 +11,8 @@ least_squares.py and provides an efficient approximate solver.
 
 
 import numpy as np
+from experiments.config import USE_WANDB
+import wandb
 
 
 def hard_thresholding(beta, k):
@@ -58,6 +60,13 @@ def iht(problem, k, max_iter=1000, epsilon=1e-6):
     for i in range(max_iter):
 
         loss_history.append(problem.loss(beta)) #per tenere traccia della loss ad ogni iterazione
+
+        #for plot loss history
+        if USE_WANDB:
+            wandb.log({
+                "iteration": t,
+                "loss_iter": problem.loss(beta)
+            })
 
         #step gradiente
         grad = problem.gradient(beta)

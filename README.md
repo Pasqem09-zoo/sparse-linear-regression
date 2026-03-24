@@ -31,9 +31,9 @@ To solve this problem, we implement and compare two different approaches:
 The goal of the project is to experimentally compare these two methods in terms of:
 
 - computational runtime
-- quality of the obtained solution
+- quality of the obtained solution (**objective value** at the obtained solution)
 
-as the size of the regression problem increases.
+as the size of the regression problem increases (different numbers of features, different values for the cardinality threshold $k$).
 
 
 <details>
@@ -130,49 +130,141 @@ This approach provides a **globally optimal solution**, but it becomes computati
 
 ## Experiments
 
+### Plots (wandb)
+
+In this project we use **Weights & Biases (wandb)** to log and visualize the results of the experiments.
+
+Each experiment corresponds to a synthetic regression problem defined by the number of features $p$ and sparsity level $k$. For every instance, we run both algorithms (IHT and MIQP) and log their performance.
+The following quantities are recorded:
+- **runtime**: computational time required to obtain a solution
+- **loss**: value of the least squares objective at the computed solution
+
+The main plots generated are:
+- **Runtime vs number of features ($p$)**  
+  This plot shows how the computational cost of each method scales with the problem size.
+- **Loss vs number of features ($p$)**  
+  This plot compares the quality of the solutions returned by the two methods.  
+
 ### Experiment 1 — Synthetic Sparse Regression
 
-In this experiment we compare the performance of the IHT algorithm and the MIQP formulation on synthetically generated regression problems.
+#### Dataset description
 
-Synthetic datasets are generated in order to control the sparsity structure of the true regression coefficients. In particular, we generate:
+All datasets follow the same model:
 
-- a feature matrix $X \in \mathbb{R}^{n \times p}$ with entries sampled from a standard normal distribution
-- a sparse vector of true coefficients $\beta_{\text{true}}$ with at most $k$ nonzero entries
-- a target vector
+$y = X \beta^\star + \varepsilon$
 
-$
-y = X \beta_{\text{true}} + \varepsilon
-$
+where $\beta^\star \in \mathbb{R}^p$ is $k$-sparse and $\varepsilon \sim \mathcal{N}(0, \sigma^2 I)$.
 
-where $\varepsilon$ is Gaussian noise with sd = .....
+---
+
+#### Dataset 1 — Standard Gaussian (baseline)
+
+Features are sampled independently from a standard normal distribution:
+
+$X \sim \mathcal{N}(0, I_p)$
+
+This corresponds to:
+- independent features
+- identical variance
+- well-conditioned problem
+
+---
+
+#### Dataset 2 — Different scales (diagonal covariance)
+
+Each feature has its own mean and variance:
+
+$X \sim \mathcal{N}(\mu, \Sigma)$
+
+with:
+
+$\Sigma = \mathrm{diag}(\sigma_1^2, \dots, \sigma_p^2)$
+
+This implies:
+- independent features
+- different means
+- different variances
+
+---
+
+#### Dataset 3 — Correlated features
+
+Features are sampled from a multivariate normal distribution with non-diagonal covariance:
+
+$X \sim \mathcal{N}(\mu, \Sigma)$
+
+where:
+
+$\Sigma_{ij} =
+\begin{cases}
+\sigma_i^2 & \text{if } i = j \\
+\rho \, \sigma_i \sigma_j & \text{if } i \neq j
+\end{cases}$
+
+This implies:
+- correlated features
+- different variances
+
+---
+
 
 For each generated dataset we solve the sparse regression problem using both methods and compare their performance.
 The comparison focuses on two metrics:
 
-- **runtime**
-- **objective value**
+- **runtime**, i.e. the computational time required by the algorithm
+- **objective value**, corresponding to the least squares loss at the obtained solution
 
 By varying the number of features $p$ and the sparsity level $k$, we analyze how the two approaches behave as the problem size increases.
 
 
 #### Experimental setup
 
-In this experiment we generate synthetic regression datasets with a fixed number of samples and varying number of features.
-
-The main parameters of the experiment are:
-
 - number of samples: $n = 100$
-- number of features: $p \in \{50, 100, 200, 400\}$
-- sparsity level: $k \in \{5, 10\}$
+- number of features: $p \in \{10,20,50,100\}$
+- sparsity ratio: $\{0.1,0.2\}$
 
-For each pair $(p, k)$ a synthetic dataset is generated and the sparse regression problem is solved using both methods:
+For each pair $(p, k)$ a synthetic dataset is generated and the sparse regression problem is solved using both methods.
 
-- Iterative Hard Thresholding (IHT)
-- Mixed Integer Quadratic Programming (MIQP)
+For each experiment, the results are printed in a compact tabular format:
 
-For every run we measure the following metrics:
 
-- **runtime**, i.e. the computational time required by the algorithm
-- **objective value**, corresponding to the least squares loss at the obtained solution
+Each column has the following meaning:
 
-All experiment results are logged using **Weights & Biases (wandb)**, which allows us to easily compare the performance of the two approaches.
+| Column        | Description |
+|--------------|------------|
+| `exp`        | Index of the experiment |
+| `p`          | Number of features |
+| `k`          | Sparsity level (number of nonzero coefficients) |
+| `IHT_time`   | Runtime of the IHT algorithm |
+| `IHT_loss`   | Objective value $\|y - X\beta\|^2$ obtained by IHT |
+| `MIQP_time`  | Runtime of the MIQP solver |
+| `MIQP_loss`  | Objective value $\|y - X\beta\|^2$ obtained by MIQP |
+
+This output allows a direct comparison between the two methods in terms of both computational efficiency and solution quality.
+
+In particular:
+- the runtime highlights the scalability of the algorithms
+- the objective value measures how close the solution is to the optimal least squares fit
+
+The objective value reported in the experiments corresponds to the least squares loss:
+
+$f(\beta) = \|y - X\beta\|_2^2$
+
+Given a solution $\beta$ returned by an algorithm, the loss is computed by directly evaluating this objective function.
+
+Importantly, the loss depends only on the quality of the fit and does not directly measure sparsity or the correctness of the selected variables.
+The optimal value of the problem is defined as:
+
+$f^\star = \min_{\|\beta\|_0 \le k} \|y - X\beta\|_2^2$
+
+When the MIQP solver reaches optimality, it provides a solution that achieves (or is extremely close to) this value. For this reason, the MIQP loss can be used as a benchmark.
+
+The IHT algorithm, on the other hand, produces an approximate solution. Its loss should therefore be interpreted relative to the MIQP result:
+
+- if $\text{IHT\_loss} \approx \text{MIQP\_loss}$, IHT is close to optimal
+- if $\text{IHT\_loss} > \text{MIQP\_loss}$, IHT is suboptimal
+
+In larger problems, the MIQP solver may be stopped early (e.g. due to a time limit). In this case, the reported MIQP loss corresponds to the best solution found so far and may not be globally optimal.
+Therefore, the comparison should be interpreted with care when MIQP does not certify optimality.
+
+The loss evaluates the quality of the fit but not the structure of the solution. In particular, two different sparse vectors can achieve similar loss values while selecting different sets of variables.

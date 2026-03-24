@@ -7,11 +7,13 @@ RANDOM_SEED = 42
 # Dataset parameters
 # --------------------------------------------------
 
-N_SAMPLES = 50          # number of data points (n)
-N_FEATURES = 20         # number of features (p)
-SPARSITY_LEVEL = 3      # number of nonzero coefficients (k)
+N_SAMPLES = 100          # number of data points (n)
+N_FEATURES = [10, 20, 50, 100]         # number of features (p)
+SPARSITY_RATIO = [0.1, 0.2]      # ratio of nonzero coefficients (k)
 
 NOISE_STD = 1        # noise level in synthetic data
+
+DATASET_TYPE = 3
 
 
 # --------------------------------------------------
@@ -34,7 +36,7 @@ TOL = 1e-6
 # Experiment parameters
 # --------------------------------------------------
 
-USE_WANDB = False
+USE_WANDB = True
 
 
 # --------------------------------------------------

@@ -5,7 +5,7 @@ import wandb
 from src.least_squares import LeastSquaresProblem
 from src.iht import iht
 from src.miqp import MIQPSolver
-from src.synthetic_dataset import generate_sparse_regression_dataset
+from src.synthetic_dataset import generate_dataset
 from experiments.config import *  #import experiment parameters
 
 
@@ -57,44 +57,36 @@ def run_miqp(problem, k):
 # ----------------------------------------------------
 def run_experiment(n, p, k, experiment_id):
 
-    print("\nRunning experiment with p =", p, "and k =", k)
+    #print(f"Running experiment {experiment_id}: n={n}, p={p}, k={k}")
 
-    X, y, beta_true = generate_sparse_regression_dataset(n, p, k, NOISE_STD)
+    X, y, beta_true = generate_dataset(DATASET_TYPE, n, p, k, NOISE_STD)
 
     # least squares problem instance
     problem = LeastSquaresProblem(X, y)
 
-    # iht instance
     runtime_iht, loss_iht = run_iht(problem, k)
+    # print("IHT runtime:", runtime_iht)
+    # print("IHT loss:", loss_iht)
 
-    print("IHT runtime:", runtime_iht)
-    print("IHT loss:", loss_iht)
-
-    if USE_WANDB:
-        wandb.log({
-            "experiment_id": experiment_id,
-            "method": "IHT",
-            "p": p,
-            "k": k,
-            "runtime": runtime_iht,
-            "loss": loss_iht
-        })
-
-    # miqp instance
     runtime_miqp, loss_miqp = run_miqp(problem, k)
+    # print("MIQP runtime:", runtime_miqp)
+    # print("MIQP loss:", loss_miqp)
 
-    print("MIQP runtime:", runtime_miqp)
-    print("MIQP loss:", loss_miqp)
 
+    #log results to wandb 
     if USE_WANDB:
         wandb.log({
-            "experiment_id": experiment_id,
-            "method": "MIQP",
             "p": p,
             "k": k,
-            "runtime": runtime_miqp,
-            "loss": loss_miqp
+            "runtime_iht": runtime_iht,
+            "runtime_miqp": runtime_miqp,
+            "loss_iht": loss_iht,
+            "loss_miqp": loss_miqp
         })
+
+    print(f"{experiment_id:3d} | {p:3d} | {k:3d} | {runtime_iht:8.4f} | {loss_iht:9.2f} | "
+          f"{runtime_miqp if runtime_miqp is not None else '  None':>9} | "
+          f"{loss_miqp if loss_miqp is not None else '  None':>9}")
 
 
 # ----------------------------------------------------
@@ -106,20 +98,32 @@ def main():
 
     if USE_WANDB:
         wandb.init(project=WANDB_PROJECT)
-
+        # track "p" as the x-axis for plotting results in wandb
+        wandb.define_metric("p")
+        wandb.define_metric("*", step_metric="p")
+        print("\nexp |   p |   k | IHT_time | IHT_loss | MIQP_time | MIQP_loss")
+        print("-" * 75)
+        
+        #
         wandb.config = {
             "n_samples": N_SAMPLES,
             "n_features": N_FEATURES,
-            "sparsity_level": SPARSITY_LEVEL,
+            "sparsity_ratio": SPARSITY_RATIO,
             "noise_std": NOISE_STD
         }
 
     n = N_SAMPLES
-    p = N_FEATURES
-    k = SPARSITY_LEVEL
-    experiment_id = 1
+    p_values = N_FEATURES
 
-    run_experiment(n, p, k, experiment_id)
+    experiment_id = 0
+
+    for p in p_values:
+        for ratio in SPARSITY_RATIO:
+
+            k = int(ratio * p)
+
+            experiment_id += 1
+            run_experiment(n, p, k, experiment_id)
 
 
 # ----------------------------------------------------

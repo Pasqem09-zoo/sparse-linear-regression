@@ -61,6 +61,7 @@ class MIQPSolver:
         # gurobipy.Model è la classe che rappresenta un modello di ottimizzazione
         self.model = gp.Model("SparseRegressionMIQP")
         self.model.setParam('OutputFlag', 0)
+        self.model.setParam('TimeLimit', 5)  # massimo 5 secondi per risolvere il problema. forse sono pochi ???? TODO
 
         self.beta = self.model.addVars(self.p, lb=-GRB.INFINITY, name="beta")
         self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z") #binary variables z_i
@@ -98,14 +99,20 @@ class MIQPSolver:
 
         #check if an optimal solution was found
         if self.model.status != GRB.OPTIMAL:
-            print("Warning: optimal solution not found.")
+            print("Status:", self.model.status)
 
 
     # confronta soluzioni (UB) e limiti inferiori (LB)_ gurobi ottiene un LB con z in [0,1] e un UB con z in {0,1}. poi divide
     # in sottoproblemi per cercare qualcosa di meglio e aggiorna LB e UB fino a trovare la soluzione ottimale cioè quando LB=UB, lo stato ottimale. 
     def get_solution(self):
-        if self.model.status != GRB.OPTIMAL: #status: attributo di gurobi, risultato logico basato su UB e LB; GRB.OPTIMAL indica la soluzione ottimale
+        # check if at least one feasible solution exists
+        if self.model.SolCount == 0:
+            print("No feasible solution found.")
             return None
+
+        # check optimality
+        if self.model.status != GRB.OPTIMAL: #status: attributo di gurobi, risultato logico basato su UB e LB; GRB.OPTIMAL indica la soluzione ottimale
+            print("Non optimal solution, using best found.")
 
         beta_sol = np.zeros(self.p) 
         for j in range(self.p):
