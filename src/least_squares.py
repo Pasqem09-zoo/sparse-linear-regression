@@ -57,26 +57,6 @@ class LeastSquaresProblem:
 
         return grad
     
-
-    
-    def lipschitz_constant(self):
-        """
-        Compute the Lipschitz constant of the gradient of the least squares loss function.
-        The Lipschitz constant L is given by:
-            L = 2 * lambda_max(X^T X)
-        where lambda_max is the largest eigenvalue of X^T X.
-        """
-        XtX = self.X.T @ self.X
-
-        #eigevalues
-        eigenvalues = np.linalg.eigvalsh(XtX)  # Use eigvalsh for symmetric matrices
-        lambda_max = np.max(eigenvalues.real)  # Take the real part in case of numerical issues
-
-        # Lipschitz constant
-        L = 2 * lambda_max
-
-        return L
-    
     
     def lipschitz_constant(self):
         """
@@ -93,7 +73,7 @@ class LeastSquaresProblem:
         lambda_max = np.max(eigenvalues.real)
 
         #Lipschitz constant
-        L = 2 * lambda_max
+        L = 2 * lambda_max 
 
         return L
 

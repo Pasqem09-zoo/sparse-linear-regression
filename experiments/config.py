@@ -8,19 +8,19 @@ RANDOM_SEED = 42
 # --------------------------------------------------
 
 N_SAMPLES = 100          # number of data points (n)
-N_FEATURES = [10, 20, 50, 100]         # number of features (p)
-SPARSITY_RATIO = [0.1, 0.2]      # ratio of nonzero coefficients (k)
+N_FEATURES = [300]         # number of features (p)
+SPARSITY_RATIO = [0.05]      # ratio of nonzero coefficients (k)
 
 NOISE_STD = 1        # noise level in synthetic data
 
-DATASET_TYPE = 3
+DATASET_TYPE = 1
 
 
 # --------------------------------------------------
 # IHT algorithm parameters
 # --------------------------------------------------
 
-MAX_ITER = 100
+MAX_ITER = 100000
 TOL = 1e-6
 
 
@@ -36,7 +36,7 @@ TOL = 1e-6
 # Experiment parameters
 # --------------------------------------------------
 
-USE_WANDB = True
+USE_WANDB = False
 
 
 # --------------------------------------------------

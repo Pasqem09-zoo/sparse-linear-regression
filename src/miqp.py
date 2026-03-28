@@ -37,12 +37,17 @@ class MIQPSolver:
 
 
     #idea per trovare M ottimale in modo da non tagliare certi valori di beta, andando a tagliare potenziali soluzioni ottimali
-    #NOTA: funziona solo se X'X è invertibile e se n>p e se X ha rango pieno
+    #NOTA: funziona anche se X'X è non-invertibile e se n>p e se X ha rango pieno
     def _choose_M(self):
         XtX = self.X.T @ self.X
         Xty = self.X.T @ self.y
 
-        beta_ls = np.linalg.solve(XtX, Xty) #soluzione beta che minimizza ||y - X beta||^2 senza vincoli di sparsità
+        lambda_reg = 1e-6  # piccolo valore
+
+        #aggiunta di termine di regolarizzazione per garantire l'invertibilità di XtX_reg per garantire invertibilità di X'X. 
+        XtX_reg = XtX + lambda_reg * np.eye(self.p)  # X'X + lambda * I(pxp)
+        
+        beta_ls = np.linalg.solve(XtX_reg, Xty) #soluzione beta che minimizza ||y - X beta||^2 senza vincoli di sparsità
 
         # Safety factor
         M = 2.0 * np.max(np.abs(beta_ls)) #prendo il massimo valore assoluto tra i coefficienti di beta_ls e lo moltiplico per 2
@@ -60,12 +65,11 @@ class MIQPSolver:
 
         # gurobipy.Model è la classe che rappresenta un modello di ottimizzazione
         self.model = gp.Model("SparseRegressionMIQP")
-        self.model.setParam('OutputFlag', 0)
-        self.model.setParam('TimeLimit', 5)  # massimo 5 secondi per risolvere il problema. forse sono pochi ???? TODO
+        self.model.setParam('OutputFlag', 0)  # disabilita output di Gurobi
+        self.model.setParam('TimeLimit', 10)  # massimo 5 secondi per risolvere il problema
 
         self.beta = self.model.addVars(self.p, lb=-GRB.INFINITY, name="beta")
         self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z") #binary variables z_i
-
 
         #objective: minimize ||y - X beta||^2
         obj = 0

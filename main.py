@@ -1,7 +1,5 @@
 import time
 import numpy as np
-import wandb
-
 from src.least_squares import LeastSquaresProblem
 from src.iht import iht
 from src.miqp import MIQPSolver
@@ -17,6 +15,18 @@ def run_iht(problem, k):
     start_time = time.time() #start timer to measure runtime
 
     beta_solution, loss_history = iht(problem, k) #run IHT algorithm to get solution and loss history
+    #print("IHT loss history:", loss_history)
+    n_iter = len(loss_history)
+    first_loss = loss_history[0]
+    median_loss = loss_history[n_iter // 2]
+    final_loss = loss_history[-1]
+    print("IHT (iteration, loss):")
+    print(f"- first loss: {first_loss:.4f}")
+    print(f"- median loss: {median_loss:.4f}")
+    print(f"- final loss: {final_loss:.4f}")
+
+
+
 
     end_time = time.time() #end timer
 
@@ -72,6 +82,8 @@ def run_experiment(n, p, k, experiment_id):
     # print("MIQP runtime:", runtime_miqp)
     # print("MIQP loss:", loss_miqp)
 
+    print("\nexp |   p |   k | IHT_time | IHT_loss | MIQP_time | MIQP_loss")
+    print("-" * 75)
 
     #log results to wandb 
     if USE_WANDB:
@@ -85,8 +97,10 @@ def run_experiment(n, p, k, experiment_id):
         })
 
     print(f"{experiment_id:3d} | {p:3d} | {k:3d} | {runtime_iht:8.4f} | {loss_iht:9.2f} | "
-          f"{runtime_miqp if runtime_miqp is not None else '  None':>9} | "
-          f"{loss_miqp if loss_miqp is not None else '  None':>9}")
+      f"{runtime_miqp if runtime_miqp is not None else '  None':>9} | "
+      f"{loss_miqp if loss_miqp is not None else '  None':>9}")
+
+
 
 
 # ----------------------------------------------------
@@ -97,14 +111,12 @@ def main():
     np.random.seed(RANDOM_SEED)
 
     if USE_WANDB:
+        import wandb as wandb_module
+        wandb = wandb_module
         wandb.init(project=WANDB_PROJECT)
         # track "p" as the x-axis for plotting results in wandb
         wandb.define_metric("p")
         wandb.define_metric("*", step_metric="p")
-        print("\nexp |   p |   k | IHT_time | IHT_loss | MIQP_time | MIQP_loss")
-        print("-" * 75)
-        
-        #
         wandb.config = {
             "n_samples": N_SAMPLES,
             "n_features": N_FEATURES,
