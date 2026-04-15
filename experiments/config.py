@@ -21,7 +21,9 @@ DATASET_TYPE = 1
 # --------------------------------------------------
 
 MAX_ITER = 100000
-TOL = 1e-6
+TOL = 1e-8
+IHT_N_RUNS = 100
+EPSILON = 1e-7
 
 
 # # --------------------------------------------------
@@ -30,6 +32,8 @@ TOL = 1e-6
 
 # GUROBI_VERBOSE = False
 # GUROBI_TIME_LIMIT = None
+GUROBI_OUTPUT_FLAG = 0    # 0 = silenzioso, 1 = log attivo
+GUROBI_TIME_LIMIT = 30   # in secondi
 
 
 # --------------------------------------------------

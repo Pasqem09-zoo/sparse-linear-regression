@@ -130,8 +130,6 @@ This approach provides a **globally optimal solution**, but it becomes computati
 
 ## Experiments
 
-### Plots (wandb)
-
 In this project we use **Weights & Biases (wandb)** to log and visualize the results of the experiments.
 
 Each experiment corresponds to a synthetic regression problem defined by the number of features $p$ and sparsity level $k$. For every instance, we run both algorithms (IHT and MIQP) and log their performance.
@@ -140,12 +138,14 @@ The following quantities are recorded:
 - **loss**: value of the least squares objective at the computed solution
 
 The main plots generated are:
-- **Runtime vs number of features ($p$)**  
+- **Runtime vs number of features**  
   This plot shows how the computational cost of each method scales with the problem size.
-- **Loss vs number of features ($p$)**  
+- **Loss vs number of features**  
   This plot compares the quality of the solutions returned by the two methods.  
 
-### Experiment 1 — Synthetic Sparse Regression
+By varying the number of features $p$ and the sparsity level $k$, we analyze how the two approaches behave as the problem size increases.
+
+---
 
 #### Dataset description
 
@@ -155,7 +155,6 @@ $y = X \beta^\star + \varepsilon$
 
 where $\beta^\star \in \mathbb{R}^p$ is $k$-sparse and $\varepsilon \sim \mathcal{N}(0, \sigma^2 I)$.
 
----
 
 #### Dataset 1 — Standard Gaussian (baseline)
 
@@ -168,7 +167,6 @@ This corresponds to:
 - identical variance
 - well-conditioned problem
 
----
 
 #### Dataset 2 — Different scales (diagonal covariance)
 
@@ -185,7 +183,6 @@ This implies:
 - different means
 - different variances
 
----
 
 #### Dataset 3 — Correlated features
 
@@ -207,17 +204,7 @@ This implies:
 
 ---
 
-
-For each generated dataset we solve the sparse regression problem using both methods and compare their performance.
-The comparison focuses on two metrics:
-
-- **runtime**, i.e. the computational time required by the algorithm
-- **objective value**, corresponding to the least squares loss at the obtained solution
-
-By varying the number of features $p$ and the sparsity level $k$, we analyze how the two approaches behave as the problem size increases.
-
-
-#### Experimental setup
+#### Setup
 
 - number of samples: $n = 100$
 - number of features: $p \in \{10,20,50,100\}$
@@ -227,7 +214,6 @@ For each pair $(p, k)$ a synthetic dataset is generated and the sparse regressio
 
 For each experiment, the results are printed in a compact tabular format:
 
-
 Each column has the following meaning:
 
 | Column        | Description |
@@ -235,24 +221,56 @@ Each column has the following meaning:
 | `exp`        | Index of the experiment |
 | `p`          | Number of features |
 | `k`          | Sparsity level (number of nonzero coefficients) |
-| `IHT_time`   | Runtime of the IHT algorithm |
-| `IHT_loss`   | Objective value $\|y - X\beta\|^2$ obtained by IHT |
+| `IHT_tot_time`   | Total runtime of the IHT procedure (over multiple runs) |
+| `IHT_best_loss`   | Best objective value $\|y - X\beta\|^2$ obtained by IHT runs |
+| `IHT_avg_loss ± std`   | measurement of robustness of IHT to random initializations |
+| `IHT_avg_iter ± std`   | Mean and standard deviation of the number of iterations required for convergence across IHT runs |
 | `MIQP_time`  | Runtime of the MIQP solver |
 | `MIQP_loss`  | Objective value $\|y - X\beta\|^2$ obtained by MIQP |
 
-This output allows a direct comparison between the two methods in terms of both computational efficiency and solution quality.
 
-In particular:
-- the runtime highlights the scalability of the algorithms
-- the objective value measures how close the solution is to the optimal least squares fit
 
+#### About IHT
+
+The performance of IHT depends on the initialization because the problem is nonconvex.  
+Different initial values of the parameter vector $\beta$ (starting points) may lead the algorithm to converge to different local minima.  
+To mitigate this issue, we adopt a **multi-start strategy**.
+
+IHT is executed multiple times (e.g., $R$ runs), each starting from a different random initialization (Gaussian initialization in our implementation).  
+Formally, if $\beta^{(1)}, \dots, \beta^{(R)}$ are the solutions obtained from $R$ independent runs of IHT, we report:
+
+$$
+\text{IHT\_loss} = \min_{r=1,\dots,R} \|y - X\beta^{(r)}\|^2
+$$
+
+The corresponding runtime is the **total time required to perform all runs**.
+
+In addition to the best solution, we also report statistics over all runs to assess the robustness and convergence behavior of the algorithm.
+- The **average loss and its standard deviation** are computed as:
+$$
+\text{IHT\_avg\_loss} = \frac{1}{R} \sum_{r=1}^R \|y - X\beta^{(r)}\|^2
+$$
+This quantity captures the typical performance of IHT, while the standard deviation measures its sensitivity to the initialization.  
+A small standard deviation indicates stable behavior, whereas a large one suggests the presence of multiple local minima and high variability across runs.
+- The **average number of iterations and its standard deviation** are also reported:
+$$
+\text{IHT\_avg\_iter} = \frac{1}{R} \sum_{r=1}^R T^{(r)}
+$$
+where $T^{(r)}$ is the number of iterations required for convergence in the $r$-th run.  
+This provides insight into the convergence speed of the algorithm and how it varies depending on the starting point.
+
+Overall, the multi-start strategy improves the reliability of IHT by reducing the impact of poor initializations, while the additional statistics provide a more complete characterization of its performance.
+
+
+#### About LOSS
 The objective value reported in the experiments corresponds to the least squares loss:
 
 $f(\beta) = \|y - X\beta\|_2^2$
 
 Given a solution $\beta$ returned by an algorithm, the loss is computed by directly evaluating this objective function.
 
-Importantly, the loss depends only on the quality of the fit and does not directly measure sparsity or the correctness of the selected variables.
+The loss measures the quality of the fit, but not the structure of the solution. In particular, two different sparse vectors can achieve similar loss values while selecting different sets of variables. Importantly, the loss depends only on how well the model fits the data and does not directly measure sparsity or the correctness of the selected variables.
+
 The optimal value of the problem is defined as:
 
 $f^\star = \min_{\|\beta\|_0 \le k} \|y - X\beta\|_2^2$
@@ -261,10 +279,8 @@ When the MIQP solver reaches optimality, it provides a solution that achieves (o
 
 The IHT algorithm, on the other hand, produces an approximate solution. Its loss should therefore be interpreted relative to the MIQP result:
 
-- if $\text{IHT\_loss} \approx \text{MIQP\_loss}$, IHT is close to optimal
-- if $\text{IHT\_loss} > \text{MIQP\_loss}$, IHT is suboptimal
+- if $\text{IHT\_loss} \approx \text{MIQP\_loss}$, IHT is close to optimal  
+- if $\text{IHT\_loss} > \text{MIQP\_loss}$, IHT is suboptimal  
+- if $\text{IHT\_loss} < \text{MIQP\_loss}$, IHT is better than MIQP
 
-In larger problems, the MIQP solver may be stopped early (e.g. due to a time limit). In this case, the reported MIQP loss corresponds to the best solution found so far and may not be globally optimal.
-Therefore, the comparison should be interpreted with care when MIQP does not certify optimality.
-
-The loss evaluates the quality of the fit but not the structure of the solution. In particular, two different sparse vectors can achieve similar loss values while selecting different sets of variables.
+The third case happens when the MIQP solver did not reach global optimality (typically, due to a time limit) and returned the best feasible solution found so far. In this case, the MIQP loss corresponds to the best solution found and it's only an upper bound on the true optimal value.

@@ -13,7 +13,7 @@ least_squares.py and provides an efficient approximate solver.
 import numpy as np
 
 import wandb
-from experiments.config import USE_WANDB
+from experiments.config import USE_WANDB, MAX_ITER, EPSILON
 
 
 def hard_thresholding(beta, k):
@@ -39,18 +39,22 @@ def hard_thresholding(beta, k):
     return beta_new
 
 
-def iht(problem, k, max_iter=100000, epsilon=1e-6):
+def iht(problem, k, beta_init=None, max_iter=MAX_ITER, epsilon=EPSILON):
     """
     Parameters
     ----------
     problem : LeastSquaresProblem
     k : (int) Maximum number of nonzero coefficients
+    beta_init : initial guess for beta
     max_iter : (int) Maximum number of iterations
     epsilon : (float) Tolerance for stopping criterion
     """
 
-    #initialize beta at zero
-    beta = np.zeros(problem.p) #Crea un vettore beta con lunghezza uguale al numero di feature
+    #initialize beta
+    if beta_init is None: #senza inizializzazione, partiamo da zero
+        beta = np.zeros(problem.p)
+    else:
+        beta = beta_init.copy()
 
     L = problem.lipschitz_constant()
     if L <= 0:
@@ -78,10 +82,12 @@ def iht(problem, k, max_iter=100000, epsilon=1e-6):
         beta_new = hard_thresholding(beta_t, k)
 
         #stopping criterion: if the change in beta is small, we can stop
+        ### se la norma della differenza tra beta_new e beta è minore di epsilon, allora fermati, 
+        ### in pratica se due iterazioni successive non cambiano molto beta, allora abbiamo raggiunto un punto di stallo e possiamo fermarci
         if np.linalg.norm(beta_new - beta) < epsilon:
             break
 
         beta = beta_new
 
-    return beta, loss_history
+    return beta, loss_history, len(loss_history)
 

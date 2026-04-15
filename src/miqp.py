@@ -13,6 +13,8 @@ import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
 
+from experiments.config import GUROBI_OUTPUT_FLAG, GUROBI_TIME_LIMIT
+
 
 class MIQPSolver:
 
@@ -43,7 +45,6 @@ class MIQPSolver:
         Xty = self.X.T @ self.y
 
         lambda_reg = 1e-6  # piccolo valore
-
         #aggiunta di termine di regolarizzazione per garantire l'invertibilità di XtX_reg per garantire invertibilità di X'X. 
         XtX_reg = XtX + lambda_reg * np.eye(self.p)  # X'X + lambda * I(pxp)
         
@@ -65,8 +66,8 @@ class MIQPSolver:
 
         # gurobipy.Model è la classe che rappresenta un modello di ottimizzazione
         self.model = gp.Model("SparseRegressionMIQP")
-        self.model.setParam('OutputFlag', 0)  # disabilita output di Gurobi
-        self.model.setParam('TimeLimit', 10)  # massimo 5 secondi per risolvere il problema
+        self.model.setParam('OutputFlag', GUROBI_OUTPUT_FLAG)
+        self.model.setParam('TimeLimit', GUROBI_TIME_LIMIT)
 
         self.beta = self.model.addVars(self.p, lb=-GRB.INFINITY, name="beta")
         self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z") #binary variables z_i
