@@ -53,13 +53,14 @@ class MIQPSolver:
         beta_ls = np.linalg.solve(XtX_reg, Xty) #### soluzione beta che minimizza ||y - X beta||^2 senza vincoli di sparsità
 
         # Safety factor
-        M = 2.0 * np.max(np.abs(beta_ls)) #### prendo il massimo valore assoluto tra i coefficienti di beta_ls e lo moltiplico per 2
+        M = 5.0 * np.max(np.abs(beta_ls)) #### prendo il massimo valore assoluto tra i coefficienti di beta_ls e lo moltiplico per 5
         if M == 0: # safeguard
             M = 1.0
 
         return M
     
-    #### TODO: M=1 POTREBBE MIGLIORARE I RISULTATI????
+    #### TODO: prima era M = 2.0 * np.max(np.abs(beta_ls)) ma rispetto a max|beta_iht| nei casi difficili è ristretto il range del beta_miqp. questo perche M è troppo piccolo e non garantisce tutta l'esplorazione
+    #### questo problema portava ad avere una loss esatta con bound 0% di miqp piu grande della loss iht e concettualmente non ha senso!
 
 
 

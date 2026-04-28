@@ -1,6 +1,8 @@
 import time
 import wandb
 import numpy as np
+import os
+os.environ["WANDB_SILENT"] = "true"
 
 from src.least_squares import LeastSquaresProblem
 from src.iht import iht
@@ -102,7 +104,7 @@ def run_miqp(problem, k):
 # ----------------------------------------------------
 # log wandb
 # ----------------------------------------------------
-def log_experiment_to_wandb(p, k,
+def log_experiment_to_wandb(p, k, ratio,
                             runtime_iht, loss_iht,
                             runtime_miqp, loss_miqp, gap_miqp):
     if not USE_WANDB:
@@ -110,14 +112,16 @@ def log_experiment_to_wandb(p, k,
 
     wandb.log({
         "p": p,
+        "k": k,
+        "sparsity_ratio": ratio,
 
-        f"runtime_iht_k={k}": runtime_iht,
-        f"runtime_miqp_k={k}": runtime_miqp if runtime_miqp is not None else np.nan,
+        "runtime_iht": runtime_iht,
+        "runtime_miqp": runtime_miqp if runtime_miqp is not None else np.nan,
 
-        f"loss_iht_k={k}": loss_iht,
-        f"loss_miqp_k={k}": loss_miqp if loss_miqp is not None else np.nan,
+        "loss_iht": loss_iht,
+        "loss_miqp": loss_miqp if loss_miqp is not None else np.nan,
 
-        f"gap_miqp_k={k}": gap_miqp if gap_miqp is not None else np.nan,
+        "gap_miqp": gap_miqp if gap_miqp is not None else np.nan,
     })
 
 
@@ -126,6 +130,9 @@ def log_experiment_to_wandb(p, k,
 # Run a single experiment
 # ----------------------------------------------------
 def run_experiment(n, p, k, experiment_id):
+
+    #### per ogni esperimento, per garantire che i dati siano sempre gli stessi, imposto il seed in modo che dipenda da p e k
+    np.random.seed(RANDOM_SEED + 1000 * p + k)
 
     X, y, beta_true = generate_dataset(DATASET_TYPE, n, p, k, NOISE_STD)
 
@@ -139,6 +146,7 @@ def run_experiment(n, p, k, experiment_id):
     log_experiment_to_wandb(
         p=p,
         k=k,
+        ratio=k / p,
         runtime_iht=runtime_iht,
         loss_iht=loss_iht,
         runtime_miqp=runtime_miqp,
@@ -171,37 +179,38 @@ def run_experiment(n, p, k, experiment_id):
 # ----------------------------------------------------
 def main():
 
-    np.random.seed(RANDOM_SEED)
-
-    if USE_WANDB:
-        wandb.init(
-            project=WANDB_PROJECT,
-            config={
-                "n_samples": N_SAMPLES,
-                "n_features": N_FEATURES,
-                "sparsity_ratio": SPARSITY_RATIO,
-                "noise_std": NOISE_STD,
-                "dataset_type": DATASET_TYPE
-            }
-        )
-    wandb.define_metric("p") # usa p come asse x
-    wandb.define_metric("*", step_metric="p")
-
     n = N_SAMPLES
     p_values = N_FEATURES
     experiment_id = 0
     
     print("\nexp |   p |   k | IHT_tot_time | IHT_best_loss | IHT_avg_loss ± std | IHT_avg_iter ± std | MIQP_time | MIQP_loss | MIQP_gap (%) | MIQP_tot_time")
-    print("-" * 170)
+    print("-" * 170)    
 
-    for p in p_values:
-        for ratio in SPARSITY_RATIO:
+    #### permette di reinizializzare una nuova run per ogni ratio, in base al ciclo esterno, cosi ogni ratio ha una run separata e poi puoi fare il confronto tra ratio diversi in wandb
+    for ratio in SPARSITY_RATIO:
+        if USE_WANDB:
+            wandb.init(
+                project=WANDB_PROJECT,
+                name = f"dataset{DATASET_TYPE}_ratio{ratio}",
+                config={
+                    "dataset_type": DATASET_TYPE,
+                    "sparsity_ratio": ratio,
+                    "n_samples": N_SAMPLES,
+                    "n_features": N_FEATURES,
+                    "noise_std": NOISE_STD,
+                },
+                reinit = True 
+            )
+            wandb.define_metric("p") # usa p come asse x
+            wandb.define_metric("*", step_metric="p")
 
+        for p in p_values:
             k = int(ratio * p)
-
             experiment_id += 1
             run_experiment(n, p, k, experiment_id)
 
+        if USE_WANDB:
+            wandb.finish()
 
             
 
