@@ -63,7 +63,7 @@ def run_iht(problem, k):
     avg_iter = np.mean(iter_used)
     std_iter = np.std(iter_used)
 
-    return total_runtime, loss_value, avg_loss, std_loss, avg_iter, std_iter
+    return total_runtime, loss_value, avg_loss, std_loss, avg_iter, std_iter, best_beta
 
 
 # ----------------------------------------------------
@@ -132,7 +132,13 @@ def run_experiment(n, p, k, experiment_id):
     # least squares problem instance
     problem = LeastSquaresProblem(X, y)
 
-    runtime_iht, loss_iht, avg_loss_iht, std_loss_iht, avg_iter_iht, std_iter_iht = run_iht(problem, k)
+    runtime_iht, loss_iht, avg_loss_iht, std_loss_iht, avg_iter_iht, std_iter_iht, beta_iht = run_iht(problem, k)
+    solver_debug = MIQPSolver(problem, k)
+    print("\nDEBUG Big-M")
+    print("p:", p, "k:", k)
+    print("M:", solver_debug.M)
+    print("max |beta_IHT|:", np.max(np.abs(beta_iht)))
+    print("ratio max|beta_IHT| / M:", np.max(np.abs(beta_iht)) / solver_debug.M)
     runtime_miqp, loss_miqp, gap_miqp, miqp_tot_time = run_miqp(problem, k)
 
     # log results to wandb
@@ -184,8 +190,8 @@ def main():
                 "dataset_type": DATASET_TYPE
             }
         )
-    wandb.define_metric("p") # usa p come asse x
-    wandb.define_metric("*", step_metric="p")
+        wandb.define_metric("p") # usa p come asse x
+        wandb.define_metric("*", step_metric="p")
 
     n = N_SAMPLES
     p_values = N_FEATURES
@@ -203,7 +209,7 @@ def main():
             run_experiment(n, p, k, experiment_id)
 
 
-            
+
 
 
 # ----------------------------------------------------

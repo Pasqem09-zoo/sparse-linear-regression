@@ -59,7 +59,8 @@ class MIQPSolver:
 
         return M
     
-    #### TODO: M=1 POTREBBE MIGLIORARE I RISULTATI????
+    #### TODO: prima era M = 2.0 * np.max(np.abs(beta_ls)) ma rispetto a max|beta_iht| nei casi difficili è ristretto il range del beta_miqp. questo perche M è troppo piccolo e non garantisce tutta l'esplorazione
+    #### questo problema portava ad avere una loss esatta con bound 0% di miqp piu grande della loss iht e concettualmente non ha senso!
 
 
 
