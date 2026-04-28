@@ -54,7 +54,7 @@ def generate_dataset_2(n, p, k, noise_std):
     variances = np.random.uniform(0.5, 1.5, size=p)
 
     # covariance matrix (Sigma)
-    Sigma = np.diag(variances)
+    Sigma = np.diag(variances) # uncorrelated features => all zeros out of diagonal
 
     # sample X from multivariate normal
     X = np.random.multivariate_normal(mu, Sigma, size=n)
@@ -83,7 +83,6 @@ def generate_dataset_3(n, p, k, noise_std):
     - different means
     - different variances
     - correlated features
-    TODO: costruire prima la matrice di correlazione e poi ottenere la matrice di covarianza moltiplicando per le deviazioni standard (sqrt(variances))
     """
 
     # mean vector (mu)
@@ -91,20 +90,30 @@ def generate_dataset_3(n, p, k, noise_std):
 
     # variances (small range)
     variances = np.random.uniform(0.5, 1.5, size=p)
-
-    # covariance matrix (Sigma)
-    corr = 0.2
     std_devs = np.sqrt(variances)
-    Sigma = np.zeros((p, p))
-    for i in range(p):
-        for j in range(p):
-            if i == j:
-                Sigma[i, j] = variances[i]
-            else:
-                Sigma[i, j] = corr * std_devs[i] * std_devs[j] #corr=cov/(std_i*std_j) => cov = corr*std_i*std_j
 
-    # sample X from multivariate normal
+    # random matrix used to build a valid covariance structure
+    A = np.random.randn(p, p) #values from standard normal distribution
+    C = A @ A.T   # positive semidefinite matrix
+    diag_C = np.sqrt(np.diag(C))
+    Corr = C / np.outer(diag_C, diag_C)
+
+    Sigma = np.outer(std_devs, std_devs) * Corr
     X = np.random.multivariate_normal(mu, Sigma, size=n)
+
+    # # covariance matrix (Sigma) - 
+    # rho_vals = np.random.uniform(-0.5, 0.95, size=(p, p))
+    # std_devs = np.sqrt(variances)
+    # Sigma = np.zeros((p, p))
+    # for i in range(p):
+    #     for j in range(p):
+    #         if i == j:
+    #             Sigma[i, j] = variances[i]
+    #         else:
+    #             Sigma[i, j] = rho_vals[i, j] * std_devs[i] * std_devs[j] #rho_vals=cov/(std_i*std_j) => cov = rho_vals*std_i*std_j
+
+    # # sample X from multivariate normal
+    # X = np.random.multivariate_normal(mu, Sigma, size=n)
 
     # sparse true coefficients
     beta_true = np.zeros(p)

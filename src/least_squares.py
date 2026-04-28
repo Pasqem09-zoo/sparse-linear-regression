@@ -23,7 +23,7 @@ class LeastSquaresProblem:
         self.X = X
         self.y = y
 
-        #save dimensions
+        # save dimensions
         self.n = X.shape[0]   # number of samples
         self.p = X.shape[1]   # number of features
 
@@ -37,7 +37,7 @@ class LeastSquaresProblem:
 
         residual = self.y - prediction
 
-        #compute squared L2 norm of the residual: ||y - X beta||^2
+        # compute squared L2 norm of the residual: ||y - X beta||^2
         value = np.linalg.norm(residual) ** 2
 
         return value
@@ -69,10 +69,10 @@ class LeastSquaresProblem:
         XtX = self.X.T @ self.X
         eigenvalues = np.linalg.eig(XtX)[0]
 
-        #take the largest eigenvalue (real part for numerical stability)
+        # take the largest eigenvalue (real part for numerical stability)
         lambda_max = np.max(eigenvalues.real)
 
-        #Lipschitz constant
+        # Lipschitz constant
         L = 2 * lambda_max 
 
         return L

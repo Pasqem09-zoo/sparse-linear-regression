@@ -225,8 +225,35 @@ Each column has the following meaning:
 | `IHT_best_loss`   | Best objective value $\|y - X\beta\|^2$ obtained by IHT runs |
 | `IHT_avg_loss ± std`   | measurement of robustness of IHT to random initializations |
 | `IHT_avg_iter ± std`   | Mean and standard deviation of the number of iterations required for convergence across IHT runs |
-| `MIQP_time`  | Runtime of the MIQP solver |
-| `MIQP_loss`  | Objective value $\|y - X\beta\|^2$ obtained by MIQP |
+| `MIQP_time`  | Runtime of the MIQP solver to reach the reported objective value |
+| `MIQP_loss`  | Objective value $\|y - X\beta\|^2$ of the best feasible solution found by MIQP (last significant improvement) |
+| `MIQP_gap`   | Final optimality gap at the end of the solver execution |
+| `MIQP_tot_time` | Total runtime of Gurobi to certify the optimum. `time limit` indicates that optimality is not certified |
+
+
+
+#### About LOSS
+The objective value reported in the experiments corresponds to the least squares loss:
+
+$f(\beta) = \|y - X\beta\|_2^2$
+
+Given a solution $\beta$ returned by an algorithm, the loss is computed by directly evaluating this objective function.
+
+The loss measures the quality of the fit, but not the structure of the solution. In particular, two different sparse vectors can achieve similar loss values while selecting different sets of variables. Importantly, the loss depends only on how well the model fits the data and does not directly measure sparsity or the correctness of the selected variables.
+
+The optimal value of the problem is defined as:
+
+$f^\star = \min_{\|\beta\|_0 \le k} \|y - X\beta\|_2^2$
+
+When the MIQP solver reaches optimality, it provides a solution that achieves (or is extremely close to) this value. For this reason, the MIQP loss can be used as a benchmark.
+
+The IHT algorithm, on the other hand, produces an approximate solution. Its loss should therefore be interpreted relative to the MIQP result:
+
+- if $\text{IHT\_loss} \approx \text{MIQP\_loss}$, IHT is close to optimal  
+- if $\text{IHT\_loss} > \text{MIQP\_loss}$, IHT is suboptimal  
+- if $\text{IHT\_loss} < \text{MIQP\_loss}$, IHT is better than MIQP
+
+The third case happens when the MIQP solver did not reach global optimality (typically, due to a time limit) and returned the best feasible solution found so far. In this case, the MIQP loss corresponds to the best solution found and it's only an upper bound on the true optimal value.
 
 
 
@@ -259,28 +286,20 @@ $$
 where $T^{(r)}$ is the number of iterations required for convergence in the $r$-th run.  
 This provides insight into the convergence speed of the algorithm and how it varies depending on the starting point.
 
-Overall, the multi-start strategy improves the reliability of IHT by reducing the impact of poor initializations, while the additional statistics provide a more complete characterization of its performance.
+Overall, the multi-start strategy improves the reliability of IHT by reducing the impact of poor initializations, while the additional statistics provide a more complete characterization of its performance.  
+We also tested the effect of the scale of the random initialization used in the multi-start IHT procedure. Even after projecting the initial point onto the feasible set, the initialization scale still affects the final performance. In our experiments, very small initializations (e.g. scale 0.01) led to worse best-case and average performance, suggesting that the starting points remained too close to the origin and did not provide enough diversity across runs. Larger scales such as 0.1 and 1 produced significantly better results, confirming that this choice has a non-negligible practical impact.  
 
 
-#### About LOSS
-The objective value reported in the experiments corresponds to the least squares loss:
 
-$f(\beta) = \|y - X\beta\|_2^2$
 
-Given a solution $\beta$ returned by an algorithm, the loss is computed by directly evaluating this objective function.
+#### About MIQP
 
-The loss measures the quality of the fit, but not the structure of the solution. In particular, two different sparse vectors can achieve similar loss values while selecting different sets of variables. Importantly, the loss depends only on how well the model fits the data and does not directly measure sparsity or the correctness of the selected variables.
+The MIQP solver provides an exact formulation of the sparse regression problem, but its behavior is more nuanced than a simple runtime/loss trade-off.
 
-The optimal value of the problem is defined as:
+In particular, we distinguish between:
+- the time required to find a high-quality feasible solution (`MIQP_time`)
+- the total time spent by the solver (`MIQP_tot_time`), which may include additional effort to improve the optimality bound
 
-$f^\star = \min_{\|\beta\|_0 \le k} \|y - X\beta\|_2^2$
+The final optimality gap (`MIQP_gap`) measures how far the best feasible solution is from the best lower bound found by the solver. When the solver reaches optimality, the gap is zero. Otherwise, a positive gap indicates that optimality has not been certified, typically due to the time limit.
 
-When the MIQP solver reaches optimality, it provides a solution that achieves (or is extremely close to) this value. For this reason, the MIQP loss can be used as a benchmark.
-
-The IHT algorithm, on the other hand, produces an approximate solution. Its loss should therefore be interpreted relative to the MIQP result:
-
-- if $\text{IHT\_loss} \approx \text{MIQP\_loss}$, IHT is close to optimal  
-- if $\text{IHT\_loss} > \text{MIQP\_loss}$, IHT is suboptimal  
-- if $\text{IHT\_loss} < \text{MIQP\_loss}$, IHT is better than MIQP
-
-The third case happens when the MIQP solver did not reach global optimality (typically, due to a time limit) and returned the best feasible solution found so far. In this case, the MIQP loss corresponds to the best solution found and it's only an upper bound on the true optimal value.
+This distinction is important, as in many cases Gurobi finds good solutions quickly, but requires significantly more time to certify optimality.
