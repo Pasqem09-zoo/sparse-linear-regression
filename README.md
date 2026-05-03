@@ -93,15 +93,15 @@ The script will:
 
 
 
-## 📊Experiments
+## 📊 Experiments
 
 In this project we use **Weights & Biases (wandb)** to log and visualize the results of the experiments.
 
 Experiments are conducted on synthetic datasets generated according to:
 
-$
+$$
 y = X \beta^\star + \varepsilon
-$
+$$
 
 where $\beta^\star$ is a sparse vector and $\varepsilon$ is Gaussian noise.
 
@@ -153,11 +153,13 @@ $X \sim \mathcal{N}(\mu, \Sigma)$
 
 where:
 
-$\Sigma_{ij} =
+$$
+\Sigma_{ij} =
 \begin{cases}
 \sigma_i^2 & \text{if } i = j \\
 \rho \, \sigma_i \sigma_j & \text{if } i \neq j
-\end{cases}$
+\end{cases}
+$$
 
 This implies:
 - correlated features
