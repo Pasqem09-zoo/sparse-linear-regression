@@ -1,7 +1,6 @@
 import numpy as np
 
 """
-    Generate a synthetic sparse linear regression dataset.
     Parameters
     n : Number of samples
     p : Number of features
@@ -14,13 +13,10 @@ import numpy as np
 # --------- dataset 1: standard Gaussian (baseline)
 def generate_dataset_1(n, p, k, noise_std):
     """
-    Standard sparse linear regression dataset.
     X ~ N(0, I) uncorrelated features with same scale
-    beta_true is k-sparse
-    y = X beta + noise
     """
 
-    #feature matrix (SAME SCALE FOR ALL FEATURES)
+    #feature matrix (same scale for all features)
     X = np.random.randn(n, p)
 
     #sparse true coefficients
@@ -28,20 +24,16 @@ def generate_dataset_1(n, p, k, noise_std):
     indices = np.random.choice(p, k, replace=False) #randomly select k indices to be nonzero
     beta_true[indices] = np.random.randn(k)
 
-    #noise
     noise = noise_std * np.random.randn(n)
-
-    #target variable
     y = X @ beta_true + noise
 
     return X, y, beta_true
 
 
-# ----------- Dataset 2
+# ----------- Dataset 2: different variances for each feature
 def generate_dataset_2(n, p, k, noise_std):
 
     """
-    DIFFERENT SCALE FOR EACH FEATURE (different variances)
     - different means
     - different variances
     - uncorrelated features
@@ -64,10 +56,7 @@ def generate_dataset_2(n, p, k, noise_std):
     indices = np.random.choice(p, k, replace=False) #randomly select k indices to be nonzero
     beta_true[indices] = np.random.randn(k)
 
-    # noise
     noise = noise_std * np.random.randn(n)
-
-    # target variable
     y = X @ beta_true + noise
 
     return X, y, beta_true
@@ -75,11 +64,10 @@ def generate_dataset_2(n, p, k, noise_std):
 
 
 
-# ----------- dataset 3: (to define)
+# ----------- dataset 3: correlated features
 def generate_dataset_3(n, p, k, noise_std):
     
     """
-    DIFFERENT SCALE FOR EACH FEATURE (different variances) AND CORRELATED FEATURES
     - different means
     - different variances
     - correlated features
@@ -94,48 +82,31 @@ def generate_dataset_3(n, p, k, noise_std):
 
     # random matrix used to build a valid covariance structure
     A = np.random.randn(p, p) #values from standard normal distribution
-    C = A @ A.T   # positive semidefinite matrix
+    C = A @ A.T   #positive semidefinite matrix
+
+    # convert C to correlation matrix
     diag_C = np.sqrt(np.diag(C))
     Corr = C / np.outer(diag_C, diag_C)
 
+    # covariance matrix (Sigma)
     Sigma = np.outer(std_devs, std_devs) * Corr
     X = np.random.multivariate_normal(mu, Sigma, size=n)
-
-    # # covariance matrix (Sigma) - 
-    # rho_vals = np.random.uniform(-0.5, 0.95, size=(p, p))
-    # std_devs = np.sqrt(variances)
-    # Sigma = np.zeros((p, p))
-    # for i in range(p):
-    #     for j in range(p):
-    #         if i == j:
-    #             Sigma[i, j] = variances[i]
-    #         else:
-    #             Sigma[i, j] = rho_vals[i, j] * std_devs[i] * std_devs[j] #rho_vals=cov/(std_i*std_j) => cov = rho_vals*std_i*std_j
-
-    # # sample X from multivariate normal
-    # X = np.random.multivariate_normal(mu, Sigma, size=n)
 
     # sparse true coefficients
     beta_true = np.zeros(p)
     indices = np.random.choice(p, k, replace=False) #randomly select k indices to be nonzero
     beta_true[indices] = np.random.randn(k)
 
-    # noise
     noise = noise_std * np.random.randn(n)
-
-    # target variable
     y = X @ beta_true + noise
 
     return X, y, beta_true
 
 
 # ----------------------------------------------------
-# General wrapper
+# General wrapper to select dataset type
 # ----------------------------------------------------
 def generate_dataset(dataset_type, n, p, k, noise_std):
-    """
-    Wrapper to select dataset type.
-    """
 
     if dataset_type == 1:
         return generate_dataset_1(n, p, k, noise_std)

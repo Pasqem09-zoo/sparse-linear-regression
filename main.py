@@ -34,7 +34,7 @@ def run_iht(problem, k):
         #### partire con "0.01 * np.random.randn(problem.p)" come sol iniziale non è corretto (perche è densa quindi p>k). IHt funziona lo stesso perche a quella dopo la proietta sull'insieme ammissibile (quindi torni dentro) 
         #### però stai facendo un'iterazione sporca. è meglio proiettare subito e partire già con un beta ammissibile cosi ogni iterazione è coerente col metodo.
         #### la proiezione iniziale cambia il supporto iniziale, cioè quali variabili sono attive all’inizio!
-        beta0 = 0.5 * np.random.randn(problem.p) #### sono indeciso tra 0.1 e 0.5
+        beta0 = 0.5 * np.random.randn(problem.p)
         beta0 = hard_thresholding(beta0, k)
 
         beta_solution, loss_history, n_iters = iht(problem, k, beta_init=beta0)
@@ -136,7 +136,6 @@ def run_experiment(n, p, k, experiment_id):
 
     X, y, beta_true = generate_dataset(DATASET_TYPE, n, p, k, NOISE_STD)
 
-    # least squares problem instance
     problem = LeastSquaresProblem(X, y)
 
     runtime_iht, loss_iht, avg_loss_iht, std_loss_iht, avg_iter_iht, std_iter_iht = run_iht(problem, k)
@@ -153,10 +152,6 @@ def run_experiment(n, p, k, experiment_id):
         loss_miqp=loss_miqp,
         gap_miqp=gap_miqp
     )
-
-    ### quando stampi una sola riga, quindi fai un solo esperimento, attiva questo print e disattiva quello nella funzione main
-    # print("\nexp |   p |   k | IHT_tot_time | IHT_best_loss | IHT_avg_loss ± std | IHT_avg_iter ± std | MIQP_time | MIQP_loss | MIQP_gap (%) | MIQP_tot_time")
-    # print("-" * 170)
 
     ### preparo la stringa perche può essere un numero o time limit
     if miqp_tot_time is None:

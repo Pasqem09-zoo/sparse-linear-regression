@@ -1,14 +1,3 @@
-"""
-In this module, we implement the Mixed-Integer Quadratic Programming (MIQP)
-formulation of the sparse linear regression problem.
-
-The cardinality sparsity constraint is modeled using binary variables and
-M constraints, and the resulting problem is solved using Gurobi.
-
-This module provides an exact baseline solution for comparison
-with the IHT algorithm.
-"""
-
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
@@ -39,66 +28,60 @@ class MIQPSolver:
         self.history = [] ### salviamo la storia di gurobi
 
 
-    #### idea: per trovare M ottimale in modo da non tagliare certi valori di beta, andando a tagliare potenziali soluzioni ottimali
-    #### qui costruiamo 
-    #NOTA: funziona anche se X'X è non-invertibile e se n>p e se X ha rango pieno
+    #### funzione per trovare M ottimale in modo da non tagliare certi valori di beta, andando a tagliare potenziali soluzioni ottimali
     def _choose_M(self):
         XtX = self.X.T @ self.X
         Xty = self.X.T @ self.y
 
         lambda_reg = 1e-6
-        #### aggiunta di termine di regolarizzazione per garantire invertibilità di X'X. 
+        #### aggiunta di termine di regolarizzazione per garantire invertibilità di X'X
         XtX_reg = XtX + lambda_reg * np.eye(self.p)  # X'X + lambda * I(pxp)
         
         beta_ls = np.linalg.solve(XtX_reg, Xty) #### soluzione beta che minimizza ||y - X beta||^2 senza vincoli di sparsità
 
         # Safety factor
-        M = 5.0 * np.max(np.abs(beta_ls)) #### prendo il massimo valore assoluto tra i coefficienti di beta_ls e lo moltiplico per 5
+        M = 5.0 * np.max(np.abs(beta_ls)) 
         if M == 0: # safeguard
             M = 1.0
 
         return M
-    
-    #### TODO: prima era M = 2.0 * np.max(np.abs(beta_ls)) ma rispetto a max|beta_iht| nei casi difficili è ristretto il range del beta_miqp. questo perche M è troppo piccolo e non garantisce tutta l'esplorazione
-    #### questo problema portava ad avere una loss esatta con bound 0% di miqp piu grande della loss iht e concettualmente non ha senso!
+  
 
 
-
-    # costruisce il modello MIQP
+    ### costruisce il modello MIQP
     def build_model(self):
 
-
-        # gurobipy.Model è la classe che rappresenta un modello di ottimizzazione
+        ### gurobipy.Model è la classe che rappresenta un modello di ottimizzazione
         self.model = gp.Model("SparseRegressionMIQP")
         self.model.setParam('OutputFlag', GUROBI_OUTPUT_FLAG)
         self.model.setParam('TimeLimit', GUROBI_TIME_LIMIT)
 
         self.beta = self.model.addVars(self.p, lb=-GRB.INFINITY, name="beta")
-        self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z") #binary variables z_i
+        self.z = self.model.addVars(self.p, vtype=GRB.BINARY, name="z") # binary variables z_i
 
-        #objective: minimize ||y - X beta||^2
+        # objective: minimize ||y - X beta||^2
         obj = 0
         n = self.X.shape[0]
-        for i in range(n): #per ogni riga i di X faccio X*beta e lo confronto con y[i]
+        for i in range(n): ### per ogni riga i di X faccio X*beta e lo confronto con y[i]
             expr = 0
             for j in range(self.p):
                 expr += self.X[i, j] * self.beta[j]
             obj += (self.y[i] - expr) * (self.y[i] - expr)
 
-        self.model.setObjective(obj, GRB.MINIMIZE) #GRB.MINIMIZE indica che vogliamo minimizzare l'obiettivo
+        self.model.setObjective(obj, GRB.MINIMIZE) ### GRB.MINIMIZE indica che vogliamo minimizzare l'obiettivo
 
 
-        #sparsity constraints M to link beta and z
+        # sparsity constraints M to link beta and z
         for j in range(self.p):
-            self.model.addConstr(self.beta[j] <= self.M * self.z[j], name=f"upper_{j}") #se z[j] = 0 allora beta[j] <- 0, se z[j] = 1 allora beta[j] <- (M)
-            self.model.addConstr(self.beta[j] >= -self.M * self.z[j], name=f"lower_{j}") #se z[j] = 0 allora beta[j] <- 0, se z[j] = 1 allora beta[j] <- (-M)
+            self.model.addConstr(self.beta[j] <= self.M * self.z[j], name=f"upper_{j}") ### se z[j] = 0 allora beta[j] <- 0, se z[j] = 1 allora beta[j] <- (M)
+            self.model.addConstr(self.beta[j] >= -self.M * self.z[j], name=f"lower_{j}") ### se z[j] = 0 allora beta[j] <- 0, se z[j] = 1 allora beta[j] <- (-M)
 
 
-        #cardinality constraint: sum of z_i <= k
+        # cardinality constraint: sum of z_i \le k
         self.model.addConstr(
             gp.quicksum(self.z[j] for j in range(self.p)) <= self.k,
             name="cardinality"
-        ) #quicksum è una funzione di Gurobi che somma, in questo caso somma tutti i z[j] e impone che la somma sia minore o uguale a k
+        ) ### quicksum è una funzione di Gurobi che somma, in questo caso somma tutti i z[j] e impone che la somma sia minore o uguale a k
 
 
     ### callback che salva ogni nuova soluzione migliore trovata da Gurobi durante il processo di ottimizzazione
@@ -109,12 +92,11 @@ class MIQPSolver:
             bound = model.cbGet(GRB.Callback.MIPSOL_OBJBND)   # best bound available at that moment (LB)
             runtime = model.cbGet(GRB.Callback.RUNTIME)       # elapsed solver time
 
-            if obj > 1e-12:  ### per evitare di dividere per zero
+            if obj > 1e-12:
                 gap = 100.0 * abs(obj - bound) / abs(obj)
             else:
                 gap = 0.0
 
-            ### diz per tenere traccia delle callback
             record = {
                 "time": round(runtime, 4),
                 "obj": round(obj, 4),
@@ -126,8 +108,8 @@ class MIQPSolver:
                 self.history.append(record)
             else:
                 last_obj = self.history[-1]["obj"]
-                if last_obj - obj > MIQP_IMPROVEMENT_THRESHOLD:  ### se la nuova soluzione è significativamente migliore di quella precedente, aggiungila alla storia
-                    self.history.append(record)
+                if last_obj - obj > MIQP_IMPROVEMENT_THRESHOLD:  
+                     self.history.append(record)
 
 
 
@@ -136,23 +118,21 @@ class MIQPSolver:
             self.build_model()
         self.model.optimize(self._callback)  ###passo la callback a gurobi in modo che venga chiamata ogni volta che gurobi trova una nuova soluzione ammissibile migliore di quella precedente
 
-
-        #check if an optimal solution was found
+        # check if an optimal solution was found
         if self.model.status != GRB.OPTIMAL:
             print("Status:", self.model.status)
+
 
 
     ### ultima sol significativamente diversa dalla precedente
     def get_last_significant_solution(self):        
         if len(self.history) == 0:
             return None
-
         return self.history[-1]
     
 
-    ### ultimo gap fatto da gurobi, che verosimilmente è associato a loss circa uguale a quella in get summary
-    ### MIPGap è un attributo di gurobi tra 0 e 1 che indica il gap tra UB e il miglior bound al momento LB
 
+    ### MIPGap è un attributo di gurobi tra 0 e 1 che indica il gap tra UB e il miglior bound al momento LB
     def get_final_info(self):
         if self.model is None:
             return None
@@ -171,8 +151,16 @@ class MIQPSolver:
         return info
 
 
-    # confronta soluzioni (UB) e limiti inferiori (LB)_ gurobi ottiene un LB con z in [0,1] e un UB con z in {0,1}. poi divide
-    # in sottoproblemi per cercare qualcosa di meglio e aggiorna LB e UB fino a trovare la soluzione ottimale cioè quando LB=UB, lo stato ottimale. 
+    # Gurobi solves the MIQP problem using a branch-and-bound procedure.
+    # It maintains:
+    # - an upper bound (UB): the best feasible solution found so far (with z in {0,1})
+    # - a lower bound (LB): obtained by solving relaxed problems where z in [0,1]
+    #
+    # The algorithm iteratively partitions the problem into subproblems (branching),
+    # updating both bounds until convergence.
+    #
+    # Optimality is certified when UB = LB (i.e., zero optimality gap).
+    # Otherwise, the best feasible solution is returned without optimality guarantee.
     def get_solution(self):
         # check if at least one feasible solution exists
         if self.model.SolCount == 0:

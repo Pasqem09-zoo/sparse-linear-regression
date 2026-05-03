@@ -13,7 +13,8 @@ SPARSITY_RATIO = [0.02, 0.05, 0.10]      # ratio of nonzero coefficients (k) [0.
 
 NOISE_STD = 1        # noise level in synthetic data
 
-DATASET_TYPE = 1
+DATASET_TYPE = 1    #1 2 3 
+
 
 
 # --------------------------------------------------
@@ -21,9 +22,9 @@ DATASET_TYPE = 1
 # --------------------------------------------------
 
 MAX_ITER = 100000
-TOL = 1e-8
 IHT_N_RUNS = 500
 EPSILON = 1e-7
+
 
 
 # # --------------------------------------------------
@@ -32,9 +33,9 @@ EPSILON = 1e-7
 
 # GUROBI_VERBOSE = False
 # GUROBI_TIME_LIMIT = None
-GUROBI_OUTPUT_FLAG = 0    # 0 = silenzioso, 1 = log attivo
-GUROBI_TIME_LIMIT = 180   # in secondi
-MIQP_IMPROVEMENT_THRESHOLD = 0.01  # soglia per considerare un miglioramento significativo nella soluzione MIQP
+GUROBI_OUTPUT_FLAG = 0    ### 0 = silenzioso, 1 = log attivo
+GUROBI_TIME_LIMIT = 180   ### in secondi
+MIQP_IMPROVEMENT_THRESHOLD = 0.01  ### soglia per considerare un miglioramento significativo nella soluzione MIQP
 
 
 

@@ -1,15 +1,3 @@
-"""
-In this module, we implement the Iterative Hard Thresholding (IHT) algorithm
-for solving the cardinality-constrained sparse linear regression problem.
-
-The algorithm performs projected gradient steps combined with
-hard thresholding to enforce sparsity constraints.
-
-This module relies on the least squares objective defined in
-least_squares.py and provides an efficient approximate solver.
-"""
-
-
 import numpy as np
 
 from experiments.config import MAX_ITER, EPSILON
@@ -23,7 +11,7 @@ def hard_thresholding(beta, k):
 
     beta_new = beta.copy()
 
-    #if k is larger than the number of features, keep all coefficients
+    # if k is larger than the number of features, keep all coefficients
     if k == 0:
         return np.zeros_like(beta_new)
 
@@ -40,13 +28,13 @@ def hard_thresholding(beta, k):
 
 def iht(problem, k, beta_init=None, max_iter=MAX_ITER, epsilon=EPSILON):
     """
-    Parameters
-    ----------
+    solve the sparse linear regression problem using the Iterative Hard Thresholding (IHT) algorithm.
+    Prameters:
     problem : LeastSquaresProblem
-    k : (int) Maximum number of nonzero coefficients
+    k : (int) number of nonzero coefficients
     beta_init : initial guess for beta
-    max_iter : (int) Maximum number of iterations
-    epsilon : (float) Tolerance for stopping criterion
+    max_iter : (int) maximum number of iterations
+    epsilon : (float) tolerance for stopping criterion
     """
 
     # initialize beta
@@ -61,10 +49,9 @@ def iht(problem, k, beta_init=None, max_iter=MAX_ITER, epsilon=EPSILON):
     
     loss_history = []
 
-    #### ciclo sulle iterazioni, in ogni iterazione faccio un passo di gradiente e poi proietto con hard thresholding, e controllo il criterio di arresto
     for i in range(max_iter): 
 
-        loss_history.append(problem.loss(beta)) #### per tenere traccia della loss ad ogni iterazione
+        loss_history.append(problem.loss(beta))
 
         # gradient step
         grad = problem.gradient(beta)
@@ -73,12 +60,9 @@ def iht(problem, k, beta_init=None, max_iter=MAX_ITER, epsilon=EPSILON):
         # hard thresholding: projection onto C_k
         beta_new = hard_thresholding(beta_t, k)
 
-        #stopping criterion: if the change in beta is small, we can stop
-        #### se la norma della differenza tra beta_new e beta è minore di epsilon, allora fermati, 
-        #### in pratica se due iterazioni successive non cambiano molto beta, allora abbiamo raggiunto un punto di stallo e possiamo fermarci
+        #### se due iterazioni successive non cambiano molto beta, allora abbiamo raggiunto un punto di stallo e possiamo fermarci
         if np.linalg.norm(beta_new - beta) < epsilon:
             break
-
         beta = beta_new
 
     return beta, loss_history, len(loss_history)

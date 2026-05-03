@@ -1,22 +1,10 @@
-"""
-In this module, we define the least squares objective function
-for linear regression and implement its main components:
-- loss function
-- gradient
-- Lipschitz constant of the gradient
-
-This module provides the continuous optimization core
-used by both IHT and MIQP approaches.
-"""
-
 import numpy as np
 
 
 class LeastSquaresProblem:
     """
     This class represents a least squares linear regression problem.
-    We want to minimize:
-        min(beta) ||y - X beta||^2
+    We want to minimize min(beta) ||y - X beta||^2.
     """
 
     def __init__(self, X, y):
@@ -30,9 +18,7 @@ class LeastSquaresProblem:
 
 
     def loss(self, beta):
-        """
-        Compute the least squares loss function value at beta.
-        """
+
         prediction = self.X @ beta
 
         residual = self.y - prediction
@@ -45,9 +31,7 @@ class LeastSquaresProblem:
 
 
     def gradient(self, beta):
-        """
-        Compute the gradient of the least squares loss function at beta.
-        """
+        
         prediction = self.X @ beta
 
         residual = self.y - prediction
