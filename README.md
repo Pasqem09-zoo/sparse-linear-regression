@@ -31,7 +31,7 @@ We compare two approaches:
 The goal of the project is to experimentally compare these two methods in terms of:
 
 - computational runtime
-- quality of the obtained solution (**objective value** at the obtained solution)
+- quality of the solution (objective value)
 
 as the size of the regression problem increases (different numbers of features, different values for the cardinality threshold $k$).
 
@@ -143,7 +143,6 @@ where:
 $\Sigma = \mathrm{diag}(\sigma_1^2, \dots, \sigma_p^2)$
 
 This implies:
-- different means
 - different variances
 
 
@@ -171,10 +170,9 @@ This implies:
 
 - number of samples: $n = 100$
 - number of features: $p \in \{50, 100, 200, 400\}$
-- sparsity ratio: $\{0.02, 0.05, 0.10\}$
+- sparsity ratio: $k/p \in \{0.02, 0.05, 0.10\}$
 - IHT multi-start runs: $R = 500$
 - MIQP time limit: 180 seconds
-- 
 
 For each pair $(p, k/p)$ a synthetic dataset is generated and the sparse regression problem is solved using both methods.
 
